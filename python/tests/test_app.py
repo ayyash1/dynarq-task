@@ -42,8 +42,22 @@ class AppTest(unittest.TestCase):
         self.assertIn("Payment Reminders Assistant", html)
         self.assertIn("INV-1001", html)
         self.assertIn("Approved", html)
+        self.assertIn("Undo Decision", html)
         self.assertIn("Skipped Invoices", html)
         self.assertIn("viewport", html)
+
+    def test_render_decision_states_and_undo(self):
+        plan, _ = load_plan_data("../data", "2026-10-12")
+        # When unapproved, shows Approve and Reject buttons
+        html_pending = render_html_page(plan, None, "2026-10-12", "../data", {})
+        self.assertIn("Approve", html_pending)
+        self.assertIn("Reject", html_pending)
+        self.assertIn("Awaiting Decision", html_pending)
+
+        # When rejected, shows Rejected status and Undo button
+        html_rejected = render_html_page(plan, None, "2026-10-12", "../data", {"INV-1001": "rejected"})
+        self.assertIn("Rejected", html_rejected)
+        self.assertIn("Undo Decision", html_rejected)
 
     def test_render_empty_state(self):
         empty_plan = {"today": "2026-10-12", "actions": [], "skipped": []}

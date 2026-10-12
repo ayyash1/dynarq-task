@@ -25,7 +25,7 @@ PORT = int(os.environ.get("PORT", "8000"))
 DATA_DIR = os.environ.get("DATA_DIR", "../data")
 TODAY = os.environ.get("TODAY") or date.today().isoformat()
 
-# In-memory store for owner's decisions (persists while the server runs)
+# In-memory store for owner's decisions (persists while server runs)
 # Maps invoice_id -> "approved" | "rejected"
 DECISIONS = {}
 
@@ -75,12 +75,11 @@ def load_plan_data(data_dir, today_str):
 
 
 def render_html_page(plan, error_msg, today_str, data_dir, decisions):
-    """Generate accessible, responsive, premium modern UI for the business owner."""
+    """Generate accessible, responsive, modern UI for the business owner."""
     actions = plan.get("actions", []) if plan else []
     skipped = plan.get("skipped", []) if plan else []
 
     # Calculate metrics
-    firm_final_count = sum(1 for a in actions if a.get("needs_approval"))
     approved_count = sum(1 for a in actions if decisions.get(a["invoice_id"]) == "approved")
     rejected_count = sum(1 for a in actions if decisions.get(a["invoice_id"]) == "rejected")
     pending_count = sum(1 for a in actions if a.get("needs_approval") and a["invoice_id"] not in decisions)
@@ -105,31 +104,56 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
 
             decision_controls = ""
             if needs_app:
-                status_label = ""
                 if decision == "approved":
-                    status_label = '<span class="status-pill status-approved" id="status-' + inv_id + '">✓ Approved</span>'
+                    decision_controls = f"""
+                    <div class="decision-group">
+                      <div class="current-status">
+                        <span class="status-pill status-approved" id="status-{inv_id}">✓ Approved</span>
+                      </div>
+                      <div class="action-btn-row">
+                        <button type="button" class="btn btn-undo"
+                                onclick="recordDecision('{inv_id}', 'undo')"
+                                aria-label="Undo decision for {inv_id}">
+                          ↺ Undo Decision
+                        </button>
+                      </div>
+                    </div>
+                    """
                 elif decision == "rejected":
-                    status_label = '<span class="status-pill status-rejected" id="status-' + inv_id + '">✕ Rejected</span>'
+                    decision_controls = f"""
+                    <div class="decision-group">
+                      <div class="current-status">
+                        <span class="status-pill status-rejected" id="status-{inv_id}">✕ Rejected</span>
+                      </div>
+                      <div class="action-btn-row">
+                        <button type="button" class="btn btn-undo"
+                                onclick="recordDecision('{inv_id}', 'undo')"
+                                aria-label="Undo decision for {inv_id}">
+                          ↺ Undo Decision
+                        </button>
+                      </div>
+                    </div>
+                    """
                 else:
-                    status_label = '<span class="status-pill status-pending" id="status-' + inv_id + '">⏳ Awaiting Decision</span>'
-
-                decision_controls = f"""
-                <div class="decision-group">
-                  <div class="current-status">{status_label}</div>
-                  <div class="action-btn-row">
-                    <button type="button" class="btn btn-approve {'btn-active' if decision == 'approved' else ''}"
-                            onclick="recordDecision('{inv_id}', 'approved')"
-                            aria-label="Approve reminder for {inv_id}">
-                      Approve
-                    </button>
-                    <button type="button" class="btn btn-reject {'btn-active' if decision == 'rejected' else ''}"
-                            onclick="recordDecision('{inv_id}', 'rejected')"
-                            aria-label="Reject reminder for {inv_id}">
-                      Reject
-                    </button>
-                  </div>
-                </div>
-                """
+                    decision_controls = f"""
+                    <div class="decision-group">
+                      <div class="current-status">
+                        <span class="status-pill status-pending" id="status-{inv_id}">⏳ Awaiting Decision</span>
+                      </div>
+                      <div class="action-btn-row">
+                        <button type="button" class="btn btn-approve"
+                                onclick="recordDecision('{inv_id}', 'approved')"
+                                aria-label="Approve reminder for {inv_id}">
+                          Approve
+                        </button>
+                        <button type="button" class="btn btn-reject"
+                                onclick="recordDecision('{inv_id}', 'rejected')"
+                                aria-label="Reject reminder for {inv_id}">
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                    """
             else:
                 decision_controls = """
                 <div class="decision-group">
@@ -249,10 +273,8 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       --primary: #3b82f6;
       --primary-hover: #2563eb;
       --success: #10b981;
-      --success-dark: #059669;
       --warning: #f59e0b;
       --danger: #ef4444;
-      --danger-dark: #dc2626;
       --focus-ring: #60a5fa;
     }}
 
@@ -271,7 +293,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       margin: 0 auto;
     }}
 
-    /* Header */
     header.main-header {{
       display: flex;
       flex-wrap: wrap;
@@ -299,7 +320,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
     }}
     .date-badge strong {{ color: #60a5fa; }}
 
-    /* Metrics Grid */
     .metrics-bar {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -327,7 +347,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       letter-spacing: 0.05em;
     }}
 
-    /* Alerts */
     .alert-box {{
       display: flex;
       gap: 1rem;
@@ -343,7 +362,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
     .alert-icon {{ font-size: 1.5rem; }}
     .alert-hint {{ font-size: 0.85rem; margin-top: 0.25rem; color: var(--text-muted); }}
 
-    /* Section Styling */
     section {{ margin-bottom: 2.5rem; }}
     .section-header {{
       display: flex;
@@ -357,7 +375,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       color: #e2e8f0;
     }}
 
-    /* Action Cards */
     .action-grid {{
       display: flex;
       flex-direction: column;
@@ -369,7 +386,7 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       border: 1px solid var(--card-border);
       border-radius: 0.75rem;
       padding: 1.25rem;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 0.2s;
     }}
     .action-card:focus-visible {{
       outline: 2px solid var(--focus-ring);
@@ -401,7 +418,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       color: var(--text-muted);
     }}
 
-    /* Badges */
     .badge {{
       display: inline-block;
       padding: 0.25rem 0.65rem;
@@ -414,7 +430,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
     .badge-firm {{ background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid #f59e0b; }}
     .badge-final {{ background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444; }}
 
-    /* Card Stats */
     .card-stats {{
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -436,7 +451,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
     }}
     .overdue-tag {{ color: #fbbf24; }}
 
-    /* Decision controls */
     .decision-group {{
       display: flex;
       flex-wrap: wrap;
@@ -452,13 +466,13 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       gap: 0.5rem;
     }}
     .btn {{
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
       border-radius: 0.375rem;
       cursor: pointer;
       border: 1px solid transparent;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s, color 0.15s;
     }}
     .btn:focus-visible {{
       outline: 2px solid var(--focus-ring);
@@ -469,23 +483,24 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       color: #a7f3d0;
       border-color: #059669;
     }}
-    .btn-approve:hover {{ background: #047857; }}
-    .btn-approve.btn-active {{
-      background: var(--success);
-      color: #fff;
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
-    }}
+    .btn-approve:hover {{ background: #047857; color: #fff; }}
 
     .btn-reject {{
       background: #7f1d1d;
       color: #fecaca;
       border-color: #dc2626;
     }}
-    .btn-reject:hover {{ background: #991b1b; }}
-    .btn-reject.btn-active {{
-      background: var(--danger);
+    .btn-reject:hover {{ background: #991b1b; color: #fff; }}
+
+    .btn-undo {{
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid var(--card-border);
+      font-weight: 500;
+    }}
+    .btn-undo:hover {{
+      background: #334155;
       color: #fff;
-      box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
     }}
 
     .status-pill {{
@@ -502,7 +517,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
     .status-rejected {{ background: rgba(239, 68, 68, 0.2); color: #f87171; }}
     .status-auto {{ background: rgba(148, 163, 184, 0.15); color: #cbd5e1; }}
 
-    /* Accordion message */
     .message-accordion {{
       background: #0f172a;
       border: 1px solid var(--card-border);
@@ -531,7 +545,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       line-height: 1.45;
     }}
 
-    /* Table for Skipped */
     .table-responsive {{
       overflow-x: auto;
       background: var(--card-bg);
@@ -565,7 +578,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
     .reason-pill {{ color: #f87171; font-weight: 500; }}
     .code-col code {{ font-size: 0.75rem; color: var(--text-muted); }}
 
-    /* Empty state */
     .empty-state {{
       background: var(--card-bg);
       border: 1px dashed var(--card-border);
@@ -591,7 +603,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
       text-align: center;
     }}
 
-    /* Mobile adjustments: exactly supports 390px */
     @media (max-width: 450px) {{
       body {{ padding: 0.5rem; }}
       h1 {{ font-size: 1.25rem; }}
@@ -673,31 +684,6 @@ def render_html_page(plan, error_msg, today_str, data_dir, decisions):
           body: JSON.stringify({{ invoice_id: invoiceId, decision: decision }})
         }});
         if (response.ok) {{
-          // Update status pill dynamically
-          const statusPill = document.getElementById('status-' + invoiceId);
-          if (statusPill) {{
-            if (decision === 'approved') {{
-              statusPill.className = 'status-pill status-approved';
-              statusPill.innerHTML = '✓ Approved';
-            }} else {{
-              statusPill.className = 'status-pill status-rejected';
-              statusPill.innerHTML = '✕ Rejected';
-            }}
-          }}
-          // Update button styling
-          const card = document.getElementById('card-' + invoiceId);
-          if (card) {{
-            const approveBtn = card.querySelector('.btn-approve');
-            const rejectBtn = card.querySelector('.btn-reject');
-            if (decision === 'approved') {{
-              approveBtn?.classList.add('btn-active');
-              rejectBtn?.classList.remove('btn-active');
-            }} else {{
-              rejectBtn?.classList.add('btn-active');
-              approveBtn?.classList.remove('btn-active');
-            }}
-          }}
-          // Reload metrics subtly or refresh page
           window.location.reload();
         }}
       }} catch (err) {{
@@ -749,6 +735,15 @@ class Handler(BaseHTTPRequestHandler):
                 decision = data.get("decision")
                 if inv_id and decision in ("approved", "rejected"):
                     DECISIONS[inv_id] = decision
+                    res_body = json.dumps({"ok": True, "decisions": DECISIONS}).encode("utf-8")
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Length", str(len(res_body)))
+                    self.end_headers()
+                    self.wfile.write(res_body)
+                    return
+                elif inv_id and decision in ("undo", "reset"):
+                    DECISIONS.pop(inv_id, None)
                     res_body = json.dumps({"ok": True, "decisions": DECISIONS}).encode("utf-8")
                     self.send_response(HTTPStatus.OK)
                     self.send_header("Content-Type", "application/json; charset=utf-8")

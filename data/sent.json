@@ -1,0 +1,9 @@
+[
+  { "invoice_id": "INV-1001", "step": "friendly", "sent_on": "2026-10-03" },
+  { "invoice_id": "INV-1004", "step": "friendly", "sent_on": "2026-09-13" },
+  { "invoice_id": "INV-1004", "step": "firm", "sent_on": "2026-09-20" },
+  { "invoice_id": "INV-1005", "step": "friendly", "sent_on": "2026-09-04" },
+  { "invoice_id": "INV-1005", "step": "firm", "sent_on": "2026-09-11" },
+  { "invoice_id": "INV-1005", "step": "final", "sent_on": "2026-09-25" },
+  { "invoice_id": "INV-1006", "step": "friendly", "sent_on": "2026-09-23" }
+]

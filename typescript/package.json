@@ -1,0 +1,20 @@
+{
+  "name": "payment-reminders",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "plan": "tsx src/plan.ts",
+    "app": "tsx src/app.ts",
+    "test": "tsx --test test/plan.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "20.16.11",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  }
+}
